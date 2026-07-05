@@ -76,3 +76,7 @@ This bot is one component of a self-hosted home server setup that also includes:
 - **Player Wiki** (Quartz/Obsidian) at a dedicated subdomain
 - **Obsidian LiveSync** via CouchDB for GM note sync across devices
 - **Automated Weekly Backups** via systemd timer to an external drive
+
+## License
+
+This project is licensed under GPL-3.0. See [LICENSE](LICENSE) for details.
