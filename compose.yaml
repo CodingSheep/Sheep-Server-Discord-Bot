@@ -1,0 +1,18 @@
+services:
+  manager:
+    build: .
+    container_name: discord-bot
+    user: "1000:1000"
+    group_add:
+      - "983"
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /home/codingsheep/docker-projects/foundry:/home/codingsheep/docker-projects/foundry
+      - /home/codingsheep/docker-projects/obsidian/quartz:/home/codingsheep/docker-projects/obsidian/quartz
+      - /home/codingsheep/docker-projects/obsidian/wiki-content:/home/codingsheep/docker-projects/obsidian/wiki-content
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/backup-drive:/mnt/backup-drive
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_ALLOWED_USER=${DISCORD_ALLOWED_USER}
