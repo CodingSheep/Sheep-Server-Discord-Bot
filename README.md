@@ -6,7 +6,8 @@ A personal Discord bot for managing a self-hosted home server running FoundryVTT
 
 - **Foundry Management** — start, stop, and switch between FoundryVTT v13 and v14 instances via an nginx reverse proxy
 - **Server Status** — at-a-glance health check of all Foundry containers and the proxy
-- **Backup & Restore** — list and restore weekly backups of Foundry data from an external drive
+- **Backup & Restore** — trigger, list, and restore backups made by the host's backup script (tiered retention on an external drive)
+- **Alerts** — DMs the allowed user when a backup or DDNS update fails, when the HTTPS certificate is close to expiry, and when the bot loses access to Docker (with the group ID to fix)
 - **Wiki Publishing** — trigger a Quartz rebuild of the player-facing campaign wiki
 
 ## Commands
@@ -17,9 +18,12 @@ A personal Discord bot for managing a self-hosted home server running FoundryVTT
 | `/foundry start <v13\|v14>` | Starts a Foundry container |
 | `/foundry stop <v13\|v14>` | Stops a Foundry container |
 | `/foundry switch <v13\|v14>` | Switches the active version nginx proxies to |
-| `/foundry backup list <v13\|v14>` | Lists available backups for a Foundry version, newest first |
-| `/foundry backup restore <v13\|v14> <n>` | Stops container, restores backup #n, restarts container |
-| `/foundry wiki publish` | Rebuilds the Quartz player wiki and reloads nginx |
+| `/foundry backup list <v13\|v14>` | Lists backups for a Foundry version, newest first, with size, age, and retention tier |
+| `/foundry backup restore <v13\|v14> <n>` | Stops the container, sets current data aside as `vNN.pre-restore-<time>` (undo), restores backup #n, restarts |
+| `/foundry backup undo <v13\|v14>` | Swaps the set-aside data back in; the replaced data is set aside in turn, so running it again switches back |
+| `/foundry backup now [source] [force]` | Asks the host to back up now; skips unchanged sources unless `force` |
+| `/foundry backup status` | Latest backup per source, last run result, next check, free space |
+| `/foundry wiki publish` | Rebuilds the Quartz player wiki (served live, no restart) |
 
 ## Tech Stack
 
@@ -39,7 +43,10 @@ app/
     wiki.py           # /foundry wiki publish
   core/
     auth.py           # Single-user authorization check
-    docker_ctl.py     # Docker/compose subprocess calls, backup and wiki logic
+    config.py         # Paths and settings from the environment
+    backups.py        # Reading archives, retention tiers, backup requests/status
+    docker_ctl.py     # Docker/compose subprocess calls, restore and wiki logic
+    monitor.py        # Background alerts: backup/DDNS failures, cert expiry
 ```
 
 ## Setup
