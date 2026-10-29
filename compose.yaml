@@ -13,6 +13,19 @@ services:
       - /home/codingsheep/docker-projects/obsidian/wiki-content:/home/codingsheep/docker-projects/obsidian/wiki-content
       - /var/run/docker.sock:/var/run/docker.sock
       - /mnt/backup-drive:/mnt/backup-drive
+      # Shared with the host backup script: lock, requests, status files
+      - /home/codingsheep/docker-projects/.infra/run:/home/codingsheep/docker-projects/.infra/run
+    extra_hosts:
+      # Lets the bot reach nginx on the host for the daily cert check
+      - "host.docker.internal:host-gateway"
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_ALLOWED_USER=${DISCORD_ALLOWED_USER}
+      # Paths (host and container paths are identical; see volumes above)
+      - FOUNDRY_DIR=/home/codingsheep/docker-projects/foundry
+      - QUARTZ_DIR=/home/codingsheep/docker-projects/obsidian/quartz
+      - BACKUP_ROOT=/mnt/backup-drive
+      - RUN_DIR=/home/codingsheep/docker-projects/.infra/run
+      - PYTHONUNBUFFERED=1
+      # Match the host so restore/undo folder names and messages use local time
+      - TZ=America/Denver
