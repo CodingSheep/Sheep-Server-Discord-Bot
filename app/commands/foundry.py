@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord import app_commands
 
@@ -29,8 +31,8 @@ class FoundryGroup(app_commands.Group):
 
     @app_commands.command(name="status", description="Get the current Foundry status")
     async def status(self, interaction: discord.Interaction):
-        active = get_active_version()
-        statuses = get_container_status()
+        active = await asyncio.to_thread(get_active_version)
+        statuses = await asyncio.to_thread(get_container_status)
 
         embed = discord.Embed(title="FoundryVTT Status")
         embed.add_field(name="Active Version", value=active or "unknown", inline=False)
@@ -44,8 +46,9 @@ class FoundryGroup(app_commands.Group):
     async def start(self, interaction: discord.Interaction, version: app_commands.Choice[str]):
         if not await self._check_auth(interaction):
             return
-        ok, message = start_stop("start", version.value)
-        await interaction.response.send_message(message, ephemeral=not ok)
+        await interaction.response.defer()  # docker start can take a few seconds
+        ok, message = await asyncio.to_thread(start_stop, "start", version.value)
+        await interaction.followup.send(message, ephemeral=not ok)
 
     @app_commands.command(name="stop", description="Stop a Foundry version")
     @app_commands.describe(version="The Foundry version to stop")
@@ -53,8 +56,9 @@ class FoundryGroup(app_commands.Group):
     async def stop(self, interaction: discord.Interaction, version: app_commands.Choice[str]):
         if not await self._check_auth(interaction):
             return
-        ok, message = start_stop("stop", version.value)
-        await interaction.response.send_message(message, ephemeral=not ok)
+        await interaction.response.defer()  # docker stop waits for Foundry to shut down
+        ok, message = await asyncio.to_thread(start_stop, "stop", version.value)
+        await interaction.followup.send(message, ephemeral=not ok)
 
     @app_commands.command(name="switch", description="Switch the active Foundry version")
     @app_commands.describe(version="The Foundry version to make active")
@@ -63,5 +67,5 @@ class FoundryGroup(app_commands.Group):
         if not await self._check_auth(interaction):
             return
         await interaction.response.defer()  # restarting nginx takes a moment
-        ok, message = switch_active_version(version.value)
+        ok, message = await asyncio.to_thread(switch_active_version, version.value)
         await interaction.followup.send(message)

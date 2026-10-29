@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord import app_commands
 
@@ -22,5 +24,5 @@ class WikiGroup(app_commands.Group):
         if not await self._check_auth(interaction):
             return
         await interaction.response.defer()
-        ok, message = build_wiki()
+        ok, message = await asyncio.to_thread(build_wiki)
         await interaction.followup.send(message)
