@@ -4,12 +4,12 @@ Defaults match the current server layout, so the bot still runs if a value is mi
 """
 import os
 
-FOUNDRY_DIR = os.getenv("FOUNDRY_DIR", "/home/codingsheep/docker-projects/foundry")
-QUARTZ_DIR = os.getenv("QUARTZ_DIR", "/home/codingsheep/docker-projects/obsidian/quartz")
+FOUNDRY_DIR = os.getenv("FOUNDRY_DIR", "/home/codingsheep/projects/foundry")
+QUARTZ_DIR = os.getenv("QUARTZ_DIR", "/home/codingsheep/projects/obsidian/quartz")
 BACKUP_ROOT = os.getenv("BACKUP_ROOT", "/mnt/backup-drive")
 
 # Shared with the host backup script: lock, requests, status files.
-RUN_DIR = os.getenv("RUN_DIR", "/home/codingsheep/docker-projects/.infra/run")
+RUN_DIR = os.getenv("RUN_DIR", "/home/codingsheep/projects/.infra/run")
 BACKUP_LOCK = os.path.join(RUN_DIR, "backup.lock")
 BACKUP_REQUEST = os.path.join(RUN_DIR, "backup-request")
 BACKUP_STATUS = os.path.join(RUN_DIR, "backup-status.json")
