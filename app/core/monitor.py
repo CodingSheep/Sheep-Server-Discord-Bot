@@ -1,11 +1,13 @@
 """Background checks that DM the allowed user: backup failures, DDNS failures,
-and a certificate close to expiry.
+a certificate close to expiry, Docker access, plus the checks in health.py
+(containers, disks, log errors, failed host services).
 
 Alerts fire when something starts failing (or the error changes), plus one
 "recovered" message when it's fixed. State is saved in RUN_DIR so a bot restart
 doesn't repeat old alerts.
 """
 import asyncio
+import math
 import json
 import os
 import socket
@@ -16,7 +18,7 @@ import traceback
 
 from discord.ext import commands, tasks
 
-from core import backups, config
+from core import backups, config, health
 from core.auth import ALLOWED_USER_ID
 from core.docker_ctl import get_foundry_domain
 
@@ -146,15 +148,39 @@ class Monitor(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.state = _load_state()
-        self.lock = asyncio.Lock()   # both loops share self.state
-        self.status_loop.start()
-        self.cert_loop.start()
-        self.docker_loop.start()
+        self.lock = asyncio.Lock()   # all loops share self.state
+        self.started = time.time()
+        self.loops = [self.status_loop, self.cert_loop, self.docker_loop,
+                      self.health_loop, self.logs_loop]
+        for loop in self.loops:
+            loop.start()
 
     async def cog_unload(self):
-        self.status_loop.cancel()
-        self.cert_loop.cancel()
-        self.docker_loop.cancel()
+        for loop in self.loops:
+            loop.cancel()
+
+    async def _run_checks(self, *checks) -> None:
+        """Run checks (functions of state -> messages) under the lock, save, then DM."""
+        msgs = []
+        async with self.lock:
+            for check in checks:
+                try:
+                    msgs += await asyncio.to_thread(check, self.state)
+                except Exception:
+                    traceback.print_exc()
+            await asyncio.to_thread(_save_state, self.state)
+        for m in msgs:
+            await self._dm(m)
+
+    def _heartbeat(self) -> None:
+        """Tell the host watchdog the bot is alive and connected to Discord."""
+        if self.bot.is_closed() or not math.isfinite(self.bot.latency):
+            return
+        try:
+            with open(config.BOT_HEARTBEAT, "w") as f:
+                f.write(f"{int(time.time())}\n")
+        except OSError:
+            traceback.print_exc()
 
     async def _dm(self, text: str) -> None:
         try:
@@ -166,11 +192,9 @@ class Monitor(commands.Cog):
     @tasks.loop(seconds=60)
     async def status_loop(self):
         try:
-            async with self.lock:
-                msgs = await asyncio.to_thread(check_status_files, self.state)
-                await asyncio.to_thread(_save_state, self.state)
-            for m in msgs:
-                await self._dm(m)
+            await asyncio.to_thread(self._heartbeat)
+            await self._run_checks(check_status_files,
+                                   lambda st: health.check_host(st, self.started))
         except Exception:
             traceback.print_exc()
 
@@ -198,8 +222,35 @@ class Monitor(commands.Cog):
         except Exception:
             traceback.print_exc()
 
+    @tasks.loop(seconds=60)
+    async def health_loop(self):
+        """Containers stopped/unhealthy/crashing, and disk space."""
+        try:
+            containers = await asyncio.to_thread(health.inspect_containers)
+        except Exception:
+            containers = None   # docker_loop reports Docker access problems
+        try:
+            checks = [health.check_disks]
+            if containers is not None:
+                checks += [lambda st: health.check_containers(st, containers),
+                           lambda st: health.check_restarts(st, containers)]
+            await self._run_checks(*checks)
+        except Exception:
+            traceback.print_exc()
+
+    @tasks.loop(minutes=5)
+    async def logs_loop(self):
+        """New kinds of error lines in any container's logs."""
+        try:
+            containers = await asyncio.to_thread(health.inspect_containers)
+            await self._run_checks(lambda st: health.check_logs(st, containers))
+        except Exception:
+            traceback.print_exc()
+
     @status_loop.before_loop
     @cert_loop.before_loop
     @docker_loop.before_loop
+    @health_loop.before_loop
+    @logs_loop.before_loop
     async def _wait_ready(self):
         await self.bot.wait_until_ready()

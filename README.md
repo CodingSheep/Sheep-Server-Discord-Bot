@@ -7,7 +7,7 @@ A personal Discord bot for managing a self-hosted home server running FoundryVTT
 - **Foundry Management** — start, stop, and switch between FoundryVTT v13 and v14 instances via an nginx reverse proxy
 - **Server Status** — at-a-glance health check of all Foundry containers and the proxy
 - **Backup & Restore** — trigger, list, and restore backups made by the host's backup script (tiered retention on an external drive)
-- **Alerts** — DMs the allowed user when a backup or DDNS update fails, when the HTTPS certificate is close to expiry, and when the bot loses access to Docker (with the group ID to fix)
+- **Alerts** — DMs the allowed user when a backup or DDNS update fails, when the HTTPS certificate is close to expiry, when the bot loses access to Docker (with the group ID to fix), when a container stops, crashes, restarts or turns unhealthy, when a disk is nearly full, when a host service fails, and when a new kind of error shows up in any container's logs. It writes a heartbeat file so a host-side watchdog can alert (through a webhook) if the bot itself is down.
 - **Wiki Publishing** — trigger a Quartz rebuild of the player-facing campaign wiki
 
 ## Commands
@@ -46,7 +46,8 @@ app/
     config.py         # Paths and settings from the environment
     backups.py        # Reading archives, retention tiers, backup requests/status
     docker_ctl.py     # Docker/compose subprocess calls, restore and wiki logic
-    monitor.py        # Background alerts: backup/DDNS failures, cert expiry
+    monitor.py        # Background alert loops: backup/DDNS failures, cert expiry, Docker access
+    health.py         # Container, disk, log-error and host-service checks; heartbeat
 ```
 
 ## Setup
