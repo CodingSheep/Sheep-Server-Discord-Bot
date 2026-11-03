@@ -39,8 +39,8 @@ A personal Discord bot for managing a self-hosted home server running FoundryVTT
 app/
   bot.py              # Bot init, registers command groups
   commands/
-    foundry.py        # /foundry status, start, stop, switch
-    backup.py         # /foundry backup list, restore
+    foundry.py        # /foundry status, start, stop, switch, update
+    backup.py         # /foundry backup list, restore, undo, now, status
     wiki.py           # /foundry wiki publish
   core/
     auth.py           # Single-user authorization check
@@ -61,6 +61,7 @@ app/
 - FoundryVTT running via Docker Compose with an nginx reverse proxy
 - An external drive mounted at `/mnt/backup-drive` for backups
 - [Quartz](https://quartz.jzhao.xyz/) installed on the server for wiki builds
+- The host scripts the bot talks to through the shared run folder (`RUN_DIR`): `server-backup.sh` (backups) and `server-watchdog.sh` (failed-service reports, and a webhook alert if the bot is down). They live in the server's config repo, not here.
 
 ### Environment Variables
 
@@ -70,6 +71,15 @@ Create a `.env` file in the project root:
 DISCORD_TOKEN=your-bot-token
 DISCORD_ALLOWED_USER=your-discord-user-id
 ```
+
+Paths and alert settings are set in `compose.yaml` (defaults are in `app/core/config.py`):
+
+| Variable | Default | What |
+|---|---|---|
+| `FOUNDRY_DIR`, `QUARTZ_DIR`, `BACKUP_ROOT`, `RUN_DIR` | server layout | Mounted paths (same inside and outside the container) |
+| `ALWAYS_ON` | `nginx-proxy,certbot,obsidian-couchdb,music-player` | Containers that alert when not running |
+| `DISK_WARN_PCT` | `90` | Disk-full alert threshold |
+| `CERT_WARN_DAYS` | `14` | Certificate expiry alert threshold |
 
 ### Running
 
@@ -85,7 +95,8 @@ This bot is one component of a self-hosted home server setup that also includes:
 - **Encounter Music Player** (Flask) at a dedicated subdomain
 - **Player Wiki** (Quartz/Obsidian) at a dedicated subdomain
 - **Obsidian LiveSync** via CouchDB for GM note sync across devices
-- **Automated Weekly Backups** via systemd timer to an external drive
+- **Automated backups** hourly while the server is on (changed data only, tiered retention) via a systemd timer to an external drive
+- **Host watchdog** (systemd timer) that posts to a Discord webhook if this bot goes down
 
 ## License
 
