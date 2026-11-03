@@ -232,6 +232,7 @@ def signature(line: str) -> str:
     s = re.sub(r"\d{4}-\d\d-\d\d[T ][\d:.,]+(Z|[+-]\d\d:?\d\d)?", "", line)
     s = re.sub(r"\b\d{1,3}(\.\d{1,3}){3}(:\d+)?\b", "<ip>", s)
     s = re.sub(r"\b(?=[\w-]*\d)(?=[\w-]*[A-Za-z])[\w-]{8,}\b", "<id>", s)
+    s = re.sub(r"\[[A-Za-z0-9]{16}\]", "[<id>]", s)   # Foundry document IDs (may have no digits)
     s = re.sub(r"\d+", "#", s)
     s = re.sub(r"\"[^\"]*\"|'[^']*'", "'…'", s)
     return re.sub(r"\s+", " ", s).strip()[:160]
