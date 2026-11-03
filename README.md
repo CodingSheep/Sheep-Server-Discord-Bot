@@ -18,6 +18,7 @@ A personal Discord bot for managing a self-hosted home server running FoundryVTT
 | `/foundry start <v13\|v14>` | Starts a Foundry container |
 | `/foundry stop <v13\|v14>` | Stops a Foundry container |
 | `/foundry switch <v13\|v14>` | Switches the active version nginx proxies to |
+| `/foundry update <v13\|v14>` | Pulls the newest Foundry build for that version; if there is one, asks to confirm, backs up, then recreates the container |
 | `/foundry backup list <v13\|v14>` | Lists backups for a Foundry version, newest first, with size, age, and retention tier |
 | `/foundry backup restore <v13\|v14> <n>` | Stops the container, sets current data aside as `vNN.pre-restore-<time>` (undo), restores backup #n, restarts |
 | `/foundry backup undo <v13\|v14>` | Swaps the set-aside data back in; the replaced data is set aside in turn, so running it again switches back |
@@ -48,6 +49,7 @@ app/
     docker_ctl.py     # Docker/compose subprocess calls, restore and wiki logic
     monitor.py        # Background alert loops: backup/DDNS failures, cert expiry, Docker access
     health.py         # Container, disk, log-error and host-service checks; heartbeat
+    updates.py        # /foundry update: pull, compare, recreate
 ```
 
 ## Setup

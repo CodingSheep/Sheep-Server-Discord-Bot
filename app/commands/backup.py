@@ -41,6 +41,27 @@ def _parse_iso(value: str | None) -> int | None:
         return None
 
 
+async def run_backup(force: bool, only: list[str]) -> tuple[dict | None, str | None]:
+    """Ask the host for a backup and wait for it. Returns (status, None) when it
+    finished, or (None, message) if it didn't start or is still running."""
+    rid = await asyncio.to_thread(backups.request_backup, force, only)
+    started = False
+    t0 = time.monotonic()
+    while True:
+        await asyncio.sleep(3)
+        st = await asyncio.to_thread(backups.read_status)
+        if st and st.get("request_id") == rid:
+            if st.get("state") == "finished":
+                return st, None
+            started = True
+        elapsed = time.monotonic() - t0
+        if not started and elapsed > NOW_START_TIMEOUT:
+            return None, ("Request queued, but no backup has started after 10 minutes. "
+                          "Check that `server-backup.path` is installed and enabled on the host.")
+        if elapsed > NOW_TOTAL_TIMEOUT:
+            return None, "Backup is still running. Check `/foundry backup status` in a few minutes."
+
+
 class BackupGroup(app_commands.Group):
     def __init__(self):
         super().__init__(name="backup", description="Manage server backups")
@@ -139,31 +160,10 @@ class BackupGroup(app_commands.Group):
         async with self._now_lock:
             await interaction.response.defer()
             only = [] if source is None or source.value == "all" else [source.value]
-            rid = await asyncio.to_thread(backups.request_backup, force, only)
-
-            started = False
-            t0 = time.monotonic()
-            st = None
-            while True:
-                await asyncio.sleep(3)
-                st = await asyncio.to_thread(backups.read_status)
-                if st and st.get("request_id") == rid:
-                    if st.get("state") == "finished":
-                        break
-                    started = True
-                elapsed = time.monotonic() - t0
-                if not started and elapsed > NOW_START_TIMEOUT:
-                    await interaction.followup.send(
-                        "Request queued, but no backup has started after 10 minutes. "
-                        "Check that `server-backup.path` is installed and enabled on the host."
-                    )
-                    return
-                if elapsed > NOW_TOTAL_TIMEOUT:
-                    await interaction.followup.send(
-                        "Backup is still running. Check `/foundry backup status` in a few minutes."
-                    )
-                    return
-
+            st, problem = await run_backup(force, only)
+            if problem:
+                await interaction.followup.send(problem)
+                return
             await interaction.followup.send(embed=self._result_embed(st))
 
     @staticmethod
