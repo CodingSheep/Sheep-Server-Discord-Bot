@@ -194,6 +194,9 @@ def check_host(state: dict, bot_started: float) -> list[str]:
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 ACCESS_LOG = re.compile(r'"(GET|POST|HEAD|PUT|DELETE|OPTIONS|PATCH|PROPFIND|CONNECT) \S* HTTP/')
 QUIET_LEVEL = re.compile(r"\[(info|debug|notice|warn|warning)\]", re.I)
+# nginx logs these at error level, but they're normal: every new wiki visitor's
+# first request has no login yet.
+NOT_AN_ERROR = re.compile(r"no user/password was provided for basic authentication")
 ERROR_LINE = re.compile(
     r"\[(error|err|crit|critical|alert|emerg|fatal)\]"     # nginx, couchdb, foundry
     r"|\b(FATAL|PANIC)\b"
@@ -219,7 +222,7 @@ def error_lines(text: str) -> list[str]:
             in_tb = False
             out.append(line)
             continue
-        if ACCESS_LOG.search(line) or QUIET_LEVEL.search(line):
+        if ACCESS_LOG.search(line) or QUIET_LEVEL.search(line) or NOT_AN_ERROR.search(line):
             continue
         if ERROR_LINE.search(line):
             out.append(line)

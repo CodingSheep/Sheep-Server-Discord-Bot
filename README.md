@@ -25,6 +25,7 @@ A personal Discord bot for managing a self-hosted home server running FoundryVTT
 | `/foundry backup now [source] [force]` | Asks the host to back up now; skips unchanged sources unless `force` |
 | `/foundry backup status` | Latest backup per source, last run result, next check, free space |
 | `/foundry wiki publish` | Rebuilds the Quartz player wiki (served live, no restart) |
+| `/foundry wiki password [password]` | Sets the wiki's shared player login (nginx basic auth); generates one if left empty. Reply is only visible to you |
 
 ## Tech Stack
 
@@ -41,7 +42,7 @@ app/
   commands/
     foundry.py        # /foundry status, start, stop, switch, update
     backup.py         # /foundry backup list, restore, undo, now, status
-    wiki.py           # /foundry wiki publish
+    wiki.py           # /foundry wiki publish, password
   core/
     auth.py           # Single-user authorization check
     config.py         # Paths and settings from the environment
@@ -50,6 +51,7 @@ app/
     monitor.py        # Background alert loops: backup/DDNS failures, cert expiry, Docker access
     health.py         # Container, disk, log-error and host-service checks; heartbeat
     updates.py        # /foundry update: pull, compare, recreate
+    wiki_auth.py      # Wiki password file for nginx basic auth
 ```
 
 ## Setup

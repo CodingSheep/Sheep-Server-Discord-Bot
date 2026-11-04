@@ -28,6 +28,8 @@ DISK_WARN_PCT = int(os.getenv("DISK_WARN_PCT", "90"))
 
 FOUNDRY_ENV_PATH = os.path.join(FOUNDRY_DIR, ".env")
 FOUNDRY_COMPOSE_PATH = os.path.join(FOUNDRY_DIR, "compose.yaml")
+# Player wiki login, read by nginx-proxy (mounted at /etc/nginx/auth). Not in git.
+WIKI_HTPASSWD = os.getenv("WIKI_HTPASSWD", os.path.join(FOUNDRY_DIR, "nginx-auth", "wiki.htpasswd"))
 
 # Cert check: connect to nginx on the host. The name to check is read from
 # FOUNDRY_DOMAIN_NAME in foundry/.env, so no domain lives in this repo.
